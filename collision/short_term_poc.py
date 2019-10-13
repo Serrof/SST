@@ -8,8 +8,10 @@ default_threshold = 1.e10
 def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_threshold):
     """Function to compute so-called short-term collision probabilities i.e. when the relative motion is approximated as
     uniform rectilinear with negligible uncertainty on velocity (and the two objects are modelled as spheres).
-    The corresponding 2-D Gaussian integral is calculated here with the formula developed at LAAS-CNRS in 2014-2015,
-    boiling down to the product between an exponential and a power series with positive terms computed recursively.
+    The corresponding 2-D Gaussian integral is calculated here with the formula developed at LAAS-CNRS: Fast and
+    Accurate Computation of Orbital Collision Probability for Short-Term Encounters, Jan. 2016, JGCD 39(5):1-13
+    DOI: 10.2514/1.G001353. It boils down to the product between an exponential and a power series with positive terms
+    computed recursively.
 
             Args:
                 r (float or numpy array): radius of combined object
