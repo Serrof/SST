@@ -5,28 +5,68 @@ default_nb_terms = 100
 default_threshold = 1.e10
 
 
+def preprocess(x_m, y_m, s_x, s_y):
+    """Vectorized function to sort arguments of collision probability, as s_x is assumed smaller or equal to s_y in the
+    LAAS formula.
+
+            Args:
+                x_m (numpy array): abscissa of mean relative position
+                y_m (numpy array): ordinate of mean relative position
+                s_x (numpy array): standard-deviation of abscissa
+                s_y (numpy array): standard-deviation of ordinate
+
+            Returns:
+                (numpy array): new abscissa
+                (numpy array): new ordinate
+                (numpy array): new standard-deviation of abscissa
+                (numpy array): new standard-deviation of ordinate
+    """
+
+    # copy inputs
+    new_x = np.array(x_m)
+    new_y = np.array(y_m)
+    s_small = np.array(s_x)
+    s_big = np.array(s_y)
+
+    # fetch indices to swap
+    indices = s_x - s_y > 0.
+
+    # swap abscissa and ordinate where necessary
+    new_x[indices] = y_m[indices]
+    new_y[indices] = x_m[indices]
+    s_small[indices] = s_y[indices]
+    s_big[indices] = s_x[indices]
+
+    return new_x, new_y, s_small, s_big
+
+
 def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_threshold):
-    """Function to compute so-called short-term collision probabilities i.e. when the relative motion is approximated as
-    uniform rectilinear with negligible uncertainty on velocity (and the two objects are modelled as spheres).
-    The corresponding 2-D Gaussian integral is calculated here with the formula developed at LAAS-CNRS: Fast and
-    Accurate Computation of Orbital Collision Probability for Short-Term Encounters, Jan. 2016, JGCD 39(5):1-13
+    """Vectorized function to compute so-called short-term collision probabilities i.e. when the relative motion is
+    approximated as uniform rectilinear with negligible uncertainty on velocity (and the two objects are modelled as
+    spheres). The corresponding 2-D Gaussian integral is calculated here with the formula developed at LAAS-CNRS: Fast
+    and Accurate Computation of Orbital Collision Probability for Short-Term Encounters, Jan. 2016, JGCD 39(5):1-13
     DOI: 10.2514/1.G001353. It boils down to the product between an exponential and a power series with positive terms
     computed recursively.
 
             Args:
-                r (float or numpy array): radius of combined object
-                x_m (float or numpy array): abscissa of mean relative position
-                y_m (float or numpy array): ordinate of mean relative position
-                s_x (float or numpy array): standard-deviation of abscissa
-                s_y (float or numpy array): standard-deviation of ordinate
+                r (numpy array): radius of combined object
+                x_m (numpy array): abscissa of mean relative position
+                y_m (numpy array): ordinate of mean relative position
+                s_x (numpy array): standard-deviation of abscissa
+                s_y (numpy array): standard-deviation of ordinate
                 n (int): number of terms to be used when calculation the power series involved in the computation of the
                 collision probability. One hundred is usually well enough for typical encounters. You would need more
                 when r >> s_x. There exists a conservative estimate for n but it is not implemented here.
                 threshold (float): value used to scale summed terms in series to avoid numerical overflow
 
             Returns:
-                (float or numpy array): collision probability
+                (numpy array): collision probability
     """
+
+    # the formula assumes that s_x <= s_y, so if not the case, arguments are re-arranged
+    if len(s_y[s_x - s_y > 0.]) > 0:
+        new_x, new_y, s_small, s_big = preprocess(x_m, y_m, s_x, s_y)
+        return evaluate(r, new_x, new_y, s_small, s_big, n, threshold)
 
     # pre-computations
 
@@ -79,7 +119,7 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
     k_plus_5 = 5.
     halfy = 2.5
 
-    exponent = r * 0.
+    exponent = np.zeros(len(r))
 
     # iterate
 
@@ -114,21 +154,26 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
 
 
 def bound(r, x_m, y_m, s_x, s_y):
-    """Function to compute lower and upper bounds on the short-term collision probability. These analytical bounds are
-    a by-product from the LAAS formula. For real alerts, they usually already give the order of magnitude for
+    """Vectorized function to compute lower and upper bounds on the short-term collision probability. These analytical
+    bounds are a by-product from the LAAS formula. For real alerts, they usually already give the order of magnitude for
     the probability and maybe even some of the first digits.
 
             Args:
-                r (float or numpy array): radius of combined object
-                x_m (float or numpy array): abscissa of mean relative position
-                y_m (float or numpy array): ordinate of mean relative position
-                s_x (float or numpy array): standard-deviation of abscissa
-                s_y (float or numpy array): standard-deviation of ordinate
+                r (numpy array): radius of combined object
+                x_m (numpy array): abscissa of mean relative position
+                y_m (numpy array): ordinate of mean relative position
+                s_x (numpy array): standard-deviation of abscissa
+                s_y (numpy array): standard-deviation of ordinate
 
             Returns:
-                (float or numpy array): lower bound on collision probability
-                (float or numpy array): upper bound on collision probability
+                (numpy array): lower bound on collision probability
+                (numpy array): upper bound on collision probability
     """
+
+    # the formula assumes that s_x <= s_y, so if not the case, arguments are re-arranged
+    if len(s_y[s_x - s_y > 0.]) > 0:
+        new_x, new_y, s_small, s_big = preprocess(x_m, y_m, s_x, s_y)
+        return bound(r, new_x, new_y, s_small, s_big)
 
     # pre-computations
     r2 = r ** 2
