@@ -31,8 +31,8 @@ def preprocess(x_m, y_m, s_x, s_y):
     # fetch indices to swap
     indices = s_x - s_y > 0.
 
-    # swap abscissa and ordinate where necessary
-    new_x[indices] = y_m[indices]
+    # process abscissa and ordinate where necessary
+    new_x[indices] = -y_m[indices]
     new_y[indices] = x_m[indices]
     s_small[indices] = s_y[indices]
     s_big[indices] = s_x[indices]
