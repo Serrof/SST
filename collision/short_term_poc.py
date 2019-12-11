@@ -102,9 +102,24 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
     c_1 = c_0 * (r2 / 2.) * inter1
     c_2 = c_0 * (r4 / 12.) * (inter3 + inter2)
     c_3 = c_0 * (r6 / 144.) * (inter1 * (inter3 + 3. * inter2) + 2. * (p3 * (1. + phi_y3 / 2.) +
-                                                                         3. * p2 * phi_y2 * omega_y))
+                                                                       3. * p2 * phi_y2 * omega_y))
 
-    s = c_0 + c_1 + c_2 + c_3
+    exponent = np.zeros(len(r))
+
+    # sum over terms
+    sc = np.zeros(len(r))
+    terms = [c_0, c_1, c_2, c_3]
+    for k in range(0, min(n, 4)):
+        sc += terms[k]
+
+        # if necessary, rescale quantities
+        indices = sc > threshold
+        exponent[indices] += np.log10(threshold)
+        c_0[indices] /= threshold
+        c_1[indices] /= threshold
+        c_2[indices] /= threshold
+        c_3[indices] /= threshold
+        sc[indices] /= threshold
 
     aux0 = r6 * p3 * phi_y2 * omega_x
     aux1 = r4 * p2 * phi_y
@@ -126,31 +141,34 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
     for k in range(0, n - 4):
 
         # if necessary, rescale quantities
-        indices = s > threshold
+        indices = sc > threshold
         exponent[indices] += np.log10(threshold)
-        s[indices] /= threshold
-        c_3[indices] /= threshold
-        c_2[indices] /= threshold
-        c_1[indices] /= threshold
         c_0[indices] /= threshold
+        c_1[indices] /= threshold
+        c_2[indices] /= threshold
+        c_3[indices] /= threshold
+        sc[indices] /= threshold
 
         # recurrence relation
-        aux = c_3 * (inter1 + aux5 * k_plus_3)
-        aux -= c_2 * p_times_r2 * (aux4 * halfy + aux3) / k_plus_4
+        inter = c_3 * (inter1 + aux5 * k_plus_3)
+        inter -= c_2 * p_times_r2 * (aux4 * halfy + aux3) / k_plus_4
         denom = k_plus_4 * k_plus_3
-        aux += c_1 * aux1 * (p_times_phi * halfy + aux2) / denom
-        aux -= c_0 * aux0 / (denom * k_plus_2)
-        aux *= r2 / (k_plus_4 * k_plus_5)
-        c_0, c_1, c_2, c_3 = c_1, c_2, c_3, aux
+        inter += c_1 * aux1 * (p_times_phi * halfy + aux2) / denom
+        inter -= c_0 * aux0 / (denom * k_plus_2)
+        inter *= r2 / (k_plus_4 * k_plus_5)
+        c_0, c_1, c_2, c_3 = c_1, c_2, c_3, inter
 
         # update intermediate variables
         k_plus_2, k_plus_3, k_plus_4, k_plus_5 = k_plus_3, k_plus_4, k_plus_5, k_plus_5 + 1.
         halfy += 1.
 
-        # update quantity of interest
-        s += c_3
+        # update sum
+        sc += c_3
 
-    return s * np.exp(exponent * np.log(10.) - p_times_r2)
+    # compute actual collision probability
+    poc = sc * np.exp(exponent * np.log(10.) - p_times_r2)
+
+    return poc
 
 
 def bound(r, x_m, y_m, s_x, s_y):
@@ -177,12 +195,12 @@ def bound(r, x_m, y_m, s_x, s_y):
 
     # pre-computations
     r2 = r ** 2
-    p = 1. / (2. * s_x**2)
+    p = 1. / (2. * s_x ** 2)
     p_times_r2 = p * r2
-    phi_y = 1. - (s_x / s_y)**2
+    phi_y = 1. - (s_x / s_y) ** 2
     ratio_x = x_m / s_x
     ratio_y = y_m / s_y
-    omega_x = (ratio_x / s_x)**2 / 4.
+    omega_x = (ratio_x / s_x) ** 2 / 4.
     omega_y = (ratio_y / s_y) ** 2 / 4.
     inter = phi_y / 2. + (omega_x + omega_y) / p
     alpha_0 = np.exp(-(ratio_x**2 + ratio_y**2) / 2.) / (2. * s_x * s_y)
@@ -212,5 +230,5 @@ if __name__ == '__main__':
     SYs = np.array([50., 50., 75., 75., 3000., 3000., 3000., 3000., 10000, 10000, 3000., 3000.,
                     152.8814468, 5756.840725, 643.409272, 6095.858688, 562.027293, 114.258519])
 
-    print(evaluate(Rs, Xs, Ys, SXs, SYs))
+    print(evaluate(Rs, Xs, Ys, SXs, SYs, 100))
     print(bound(Rs, Xs, Ys, SXs, SYs))
