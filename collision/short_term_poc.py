@@ -87,7 +87,7 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
     ratio_x = x_m / s_x
     ratio_y = y_m / s_y
     omega_x = (ratio_x / s_x)**2 / 4.
-    omega_y = (ratio_y / s_y) ** 2 / 4.
+    omega_y = (ratio_y / s_y)**2 / 4.
     omega = omega_x + omega_y
 
     alpha_0 = np.exp(-(ratio_x**2 + ratio_y**2) / 2.) / (2. * s_x * s_y)
@@ -128,17 +128,12 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
     aux4 = p_times_phi * inter0 * 2.
     aux5 = p * (2. * phi_y + 1)
 
-    k_plus_2 = 2.
-    k_plus_3 = 3.
-    k_plus_4 = 4.
-    k_plus_5 = 5.
+    k_plus_2, k_plus_3, k_plus_4, k_plus_5 = 2., 3., 4., 5.
     halfy = 2.5
-
-    exponent = np.zeros(len(r))
 
     # iterate
 
-    for k in range(0, n - 4):
+    for __ in range(0, n - 4):
 
         # if necessary, rescale quantities
         indices = sc > threshold
@@ -166,9 +161,7 @@ def evaluate(r, x_m, y_m, s_x, s_y, n=default_nb_terms, threshold=default_thresh
         sc += c_3
 
     # compute actual collision probability
-    poc = sc * np.exp(exponent * np.log(10.) - p_times_r2)
-
-    return poc
+    return sc * np.exp(exponent * np.log(10.) - p_times_r2)
 
 
 def bound(r, x_m, y_m, s_x, s_y):
